@@ -1,20 +1,37 @@
-const fs = require("fs");
-const path = require("path");
+const UserLevel = require("../../server/models/UserLevel");
+const GuildConfig = require("../../server/models/GuildConfig");
 
-module.exports = function addXP(userId) {
-  const file = path.join(__dirname, "../../data/levels.json");
-  const data = fs.existsSync(file)
-    ? JSON.parse(fs.readFileSync(file))
-    : {};
+async function addXP(message) {
+  if (message.author.bot) return;
 
-  if (!data[userId]) data[userId] = { xp: 0, level: 1 };
+  let user = await UserLevel.findOne({
+    userId: message.author.id,
+    guildId: message.guild.id
+  });
 
-  data[userId].xp += 10;
-
-  if (data[userId].xp >= data[userId].level * 100) {
-    data[userId].level++;
-    data[userId].xp = 0;
+  if (!user) {
+    user = await UserLevel.create({
+      userId: message.author.id,
+      guildId: message.guild.id
+    });
   }
 
-  fs.writeFileSync(file, JSON.stringify(data, null, 2));
-};
+  user.xp += 15;
+
+  if (user.xp >= user.level * 100) {
+    user.level++;
+    user.xp = 0;
+
+    const config = await GuildConfig.findOne({ guildId: message.guild.id });
+
+    const levelRole = config?.levelRoles.find(r => r.level === user.level);
+    if (levelRole) {
+      const role = message.guild.roles.cache.get(levelRole.roleId);
+      if (role) await message.member.roles.add(role);
+    }
+  }
+
+  await user.save();
+}
+
+module.exports = addXP;
