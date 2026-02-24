@@ -1,48 +1,41 @@
-require("dotenv").config();
-const { Client, GatewayIntentBits, Collection } = require("discord.js");
-const fs = require("fs");
-const path = require("path");
-const mongoose = require("mongoose");
-const socket = require("../server/socket");
+// bot/index.js
 
-const client = new Client({
-  intents: [
-    GatewayIntentBits.Guilds,
-    GatewayIntentBits.GuildMessages,
-    GatewayIntentBits.MessageContent,
-    GatewayIntentBits.GuildMembers
-  ]
+const { Client, GatewayIntentBits } = require('discord.js');
+const { token } = require('./config.json');
+
+const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent] });
+
+client.once('ready', () => {
+    console.log(`Logged in as ${client.user.tag}`);
 });
 
-client.commands = new Collection();
-client.prefix = ".";
+client.on('messageCreate', message => {
+    // Ignore messages from the bot itself
+    if (message.author.bot) return;
 
-// Load prefix dynamically
-const configPath = path.join(__dirname, "../data/config.json");
-if (fs.existsSync(configPath)) {
-  const config = JSON.parse(fs.readFileSync(configPath));
-  client.prefix = config.prefix || ".";
-}
+    // Prefix command handling
+    if (message.content.startsWith('!')) {
+        const args = message.content.slice(1).trim().split(/ +/);
+        const command = args.shift().toLowerCase();
 
-// Load Commands
-const commandFolders = fs.readdirSync("./bot/commands");
+        if (command === 'ping') {
+            message.channel.send('Pong!');
+        } else if (command === 'beep') {
+            message.channel.send('Boop!');
+        }
+    }
 
-for (const folder of commandFolders) {
-  const commandFiles = fs.readdirSync(`./bot/commands/${folder}`);
-  for (const file of commandFiles) {
-    const command = require(`./commands/${folder}/${file}`);
-    client.commands.set(command.name, command);
-  }
-}
+    // Slash command handling
+    if (message.content.startsWith('/')) {
+        const args = message.content.slice(1).trim().split(/ +/);
+        const command = args.shift().toLowerCase();
 
-// Events
-const eventFiles = fs.readdirSync("./bot/events");
-for (const file of eventFiles) {
-  const event = require(`./events/${file}`);
-  client.on(event.name, (...args) => event.execute(...args, client));
-}
+        if (command === 'ping') {
+            message.channel.send('Pong!');
+        } else if (command === 'beep') {
+            message.channel.send('Boop!');
+        }
+    }
+});
 
-mongoose.connect(process.env.MONGO_URI);
-client.login(process.env.BOT_TOKEN);
-
-module.exports = client;
+client.login(token);
